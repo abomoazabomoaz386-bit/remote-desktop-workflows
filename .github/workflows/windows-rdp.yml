@@ -30,21 +30,19 @@ jobs:
           Write-Host "🚀 WINDOWS RDP - CLOUDFLARE TUNNEL"
           Write-Host "============================================"
 
-          # تشغيل الـ tunnel
-          cloudflared tunnel --url tcp://localhost:3389 > tunnel.log 2>&1 &
+          # استخدام طريقة أكثر استقراراً
+          cloudflared tunnel --url tcp://localhost:3389 --protocol http2 > tunnel.log 2>&1 &
 
-          Write-Host "⏳ Waiting for tunnel (30 seconds)..."
-          Start-Sleep -Seconds 30
+          Write-Host "⏳ Waiting for tunnel (35 seconds)..."
+          Start-Sleep -Seconds 35
 
-          # استخراج الـ URL
           $url = Select-String -Path "tunnel.log" -Pattern "https?://[a-zA-Z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
 
           if ($url) {
-              Write-Host "✅ SUCCESS! TUNNEL URL:" -ForegroundColor Green
-              Write-Host $url.Matches.Value
+              Write-Host "✅ TUNNEL URL: $($url.Matches.Value)" -ForegroundColor Green
           } else {
-              Write-Host "⚠️ URL not found. Showing log:" -ForegroundColor Yellow
-              Get-Content tunnel.log
+              Write-Host "⚠️ لم يتم العثور على URL. Log كامل:" -ForegroundColor Yellow
+              Get-Content tunnel.log -Raw
           }
 
           Write-Host ""
@@ -53,7 +51,7 @@ jobs:
           Write-Host "   PASSWORD: P@ssw0rd123!"
           Write-Host "============================================"
 
-          # Keep alive
+          while ($true) { Start-Sleep -Seconds 60; Write-Host "✓ Active" }
           while ($true) {
             Start-Sleep -Seconds 60
             Write-Host "✓ Active - $(Get-Date -Format 'HH:mm:ss')"
