@@ -14,10 +14,18 @@ jobs:
 
       - name: Enable Windows RDP
         run: |
+          # Kill any existing sessions
+          query user | findstr /v "USERNAME" | findstr /v "console" | ForEach-Object { 
+            $id = ($_ -split '\s+')[2]; 
+            if ($id) { tsdiscon $id /server:localhost /v } 
+          } 2>$null
+
+          # Enable RDP
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-          Write-Host "✅ RDP Enabled Successfully!"
+          
+          Write-Host "✅ RDP Enabled and old sessions killed!"
 
       - name: Set Administrator Password
         run: |
