@@ -23,24 +23,43 @@ jobs:
           Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd123!" -Force)
           Write-Host "✅ Password Configured!"
 
-      - name: Start Cloudflare Tunnel
+            - name: Start Cloudflare Tunnel
         run: |
           Write-Host "============================================"
           Write-Host "🚀 WINDOWS RDP - CLOUDFLARE TUNNEL"
           Write-Host "============================================"
           Write-Host ""
-          Start-Process PowerShell -ArgumentList '-NoExit -Command "cloudflared tunnel --url tcp://localhost:3389"'
-          Start-Sleep -Seconds 15
-          Write-Host ""
-          Write-Host "✅ TUNNEL STARTED! Check separate PowerShell window for URL"
+
+          # تشغيل الـ tunnel ومحاولة استخراج الـ URL
+          Start-Process -FilePath "cloudflared" -ArgumentList "tunnel --url tcp://localhost:3389" -NoNewWindow -RedirectStandardOutput "tunnel.log" -RedirectStandardError "tunnel-error.log"
+
+          Write-Host "⏳ Waiting for tunnel to initialize (25 seconds)..."
+          Start-Sleep -Seconds 25
+
+          # محاولة استخراج الـ URL
+          $url = Select-String -Path "tunnel.log" -Pattern "https?://[a-zA-Z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
+
+          if ($url) {
+              $tunnelUrl = $url.Matches.Value
+              Write-Host "✅ TUNNEL URL: $tunnelUrl" -ForegroundColor Green
+              Write-Host "   (انسخ الرابط ده)"
+          } else {
+              Write-Host "⚠️ لم يتم العثور على الـ URL" -ForegroundColor Yellow
+              Write-Host "محتوى الـ log:"
+              Get-Content tunnel.log -ErrorAction SilentlyContinue
+          }
+
           Write-Host ""
           Write-Host "📋 CONNECTION DETAILS:"
           Write-Host "   USERNAME: runneradmin"
           Write-Host "   PASSWORD: P@ssw0rd123!"
-          Write-Host "   OS: Windows Server 2022"
-          Write-Host "   CPU: 4 cores"
-          Write-Host "   RAM: 16GB"
           Write-Host "============================================"
+
+          # إبقاء الـ job شغال
+          while ($true) {
+            Start-Sleep -Seconds 60
+            Write-Host "✓ Active - $(Get-Date -Format 'HH:mm:ss')"
+          }
 
       - name: Keep Session Alive
         run: |
