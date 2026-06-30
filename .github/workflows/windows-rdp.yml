@@ -1,11 +1,12 @@
 name: WINDOWS RDP - CLOUDFLARE
+
 on:
   workflow_dispatch
 
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 9999
+    timeout-minutes: 360
 
     steps:
       - name: Setup Cloudflared
@@ -13,9 +14,9 @@ jobs:
 
       - name: Enable Windows RDP
         run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
           Write-Host "✅ RDP Enabled Successfully!"
 
       - name: Set Administrator Password
@@ -23,30 +24,27 @@ jobs:
           Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd123!" -Force)
           Write-Host "✅ Password Configured!"
 
-            - name: Start Cloudflare Tunnel
+      - name: Start Cloudflare Tunnel
         run: |
           Write-Host "============================================"
           Write-Host "🚀 WINDOWS RDP - CLOUDFLARE TUNNEL"
           Write-Host "============================================"
-          Write-Host ""
 
-          # تشغيل الـ tunnel ومحاولة استخراج الـ URL
-          Start-Process -FilePath "cloudflared" -ArgumentList "tunnel --url tcp://localhost:3389" -NoNewWindow -RedirectStandardOutput "tunnel.log" -RedirectStandardError "tunnel-error.log"
+          # تشغيل الـ tunnel
+          cloudflared tunnel --url tcp://localhost:3389 > tunnel.log 2>&1 &
 
-          Write-Host "⏳ Waiting for tunnel to initialize (25 seconds)..."
-          Start-Sleep -Seconds 25
+          Write-Host "⏳ Waiting for tunnel (30 seconds)..."
+          Start-Sleep -Seconds 30
 
-          # محاولة استخراج الـ URL
+          # استخراج الـ URL
           $url = Select-String -Path "tunnel.log" -Pattern "https?://[a-zA-Z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
 
           if ($url) {
-              $tunnelUrl = $url.Matches.Value
-              Write-Host "✅ TUNNEL URL: $tunnelUrl" -ForegroundColor Green
-              Write-Host "   (انسخ الرابط ده)"
+              Write-Host "✅ SUCCESS! TUNNEL URL:" -ForegroundColor Green
+              Write-Host $url.Matches.Value
           } else {
-              Write-Host "⚠️ لم يتم العثور على الـ URL" -ForegroundColor Yellow
-              Write-Host "محتوى الـ log:"
-              Get-Content tunnel.log -ErrorAction SilentlyContinue
+              Write-Host "⚠️ URL not found. Showing log:" -ForegroundColor Yellow
+              Get-Content tunnel.log
           }
 
           Write-Host ""
@@ -55,15 +53,7 @@ jobs:
           Write-Host "   PASSWORD: P@ssw0rd123!"
           Write-Host "============================================"
 
-          # إبقاء الـ job شغال
-          while ($true) {
-            Start-Sleep -Seconds 60
-            Write-Host "✓ Active - $(Get-Date -Format 'HH:mm:ss')"
-          }
-
-      - name: Keep Session Alive
-        run: |
-          Write-Host "⏳ Session Active - Keeping alive..."
+          # Keep alive
           while ($true) {
             Start-Sleep -Seconds 60
             Write-Host "✓ Active - $(Get-Date -Format 'HH:mm:ss')"
